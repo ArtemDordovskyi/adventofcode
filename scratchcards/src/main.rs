@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::Read;
+use std::collections::HashMap;
 
 fn main() {
     let input = File::open("input.txt");
@@ -9,8 +10,9 @@ fn main() {
     let lines = content.lines();
 
     let mut sum = 0;
+    let mut instances = HashMap::new();
 
-    for line in lines {
+    for (index, line) in lines.enumerate() {
         let card: Vec<_> = line.split("|").collect();
         let win: Vec<_> = card[0]
             .split(":")
@@ -33,6 +35,19 @@ fn main() {
             }
         }
 
+        instances.entry(index).and_modify(|i| *i += 1).or_insert(1);
+        let copies: usize = *instances.get(&index).unwrap();
+        // println!("Intersection: {:?}", intersection);
+        // println!("Copies: {:?}", copies);
+
+        let indices = intersection.len() + 1;
+        let mut ind = 1;
+        while ind < indices {
+            instances.entry(ind + index).and_modify(|i| *i += copies).or_insert(copies);
+            ind += 1
+        }
+
+
         if intersection.len() > 0 {
             sum += 2_i32.pow((intersection.len() - 1).try_into().unwrap())
         }
@@ -42,5 +57,8 @@ fn main() {
         // println!("Intersection: {:?}", intersection);
     }
 
+    let sum2: usize = instances.values().sum();
+
     println!("{}", sum);
+    println!("{:?}", sum2);
 }
