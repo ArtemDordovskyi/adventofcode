@@ -17,9 +17,9 @@ impl Coord {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct Symbol {
-    // val: char,
+    val: char,
     coord: Coord,
 }
 
@@ -38,6 +38,12 @@ impl Number {
     }
 }
 
+#[derive(Debug, PartialEq)]
+struct Product {
+    nums: Vec<u32>,
+    symbol: Symbol,
+}
+
 fn is_sym(char: char) -> bool {
     char.is_ascii_punctuation() && char.to_string() != "."
 }
@@ -51,6 +57,7 @@ fn main() {
 
     let mut symbols: Vec<Symbol> = Vec::new();
     let mut numbers: Vec<Number> = Vec::new();
+    let mut products: Vec<Product> = Vec::new();
 
     let mut sum = 0;
 
@@ -68,7 +75,7 @@ fn main() {
             } else {
                 if is_sym(char) {
                     symbols.push(Symbol {
-                        // val: char,
+                        val: char,
                         coord: Coord {
                             x: j as u32,
                             y: i as u32,
@@ -92,22 +99,55 @@ fn main() {
         if number.val > 0 {
             numbers.push(number);
         }
-
-        num = String::new();
     }
 
+    let mut numbers_clone = numbers.clone();
+
+    // part 1
     while numbers.len() > 0 {
         let number = numbers.pop().unwrap();
         for symbol in &symbols {
             let coord = &symbol.coord;
             if coord.adjacent(&number.coords) {
-                // println!("Symbol: {:?}", symbol);
-                // println!("Number: {:?}", number);
                 sum += number.val;
                 break;
             }
         }
     }
 
+
+    // part 2
+    while numbers_clone.len() > 0 {
+        let number = numbers_clone.pop().unwrap();
+        for symbol in &symbols {
+            let coord = &symbol.coord;
+            if coord.adjacent(&number.coords) {
+                for product in &mut products {
+                    if product.symbol == *symbol {
+                        product.nums.push(number.val);
+                    }
+                }
+
+                if !products
+                    .iter()
+                    .any(|x| x.symbol == *symbol ) {
+                    products.push(Product {
+                        nums: vec![number.val],
+                        symbol: symbol.clone(),
+                    });
+                }
+
+                break;
+            }
+        }
+    }
+
+    let sum2: u32 = products
+        .into_iter()
+        .filter(|x| x.nums.len() > 1)
+        .map(|x| x.nums.iter().product::<u32>())
+        .sum();
+
     println!("Sum: {:?}", sum);
+    println!("Sum: {:?}", sum2);
 }
