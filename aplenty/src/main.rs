@@ -11,6 +11,14 @@ struct Aplenty {
     tree: HashMap<String, String>,
 }
 
+#[derive(Debug)]
+struct Leaf {
+    context: String,
+    sign: String,
+    value: i64,
+    key: String,
+}
+
 impl Aplenty {
     fn build(file: &str) -> Result<Aplenty, std::io::Error> {
         let mut file = File::open(file)?;
@@ -132,12 +140,119 @@ impl Aplenty {
 
         next_key
     }
+
+    fn combinations(&self) -> i64 {
+        let mut xmas: HashMap<String, [i64; 2]> = HashMap::new();
+        xmas.insert("x".to_string(), [1,4000]);
+        xmas.insert("m".to_string(), [1,4000]);
+        xmas.insert("a".to_string(), [1,4000]);
+        xmas.insert("s".to_string(), [1,4000]);
+
+        let mut result: Vec<HashMap<String, [i64; 2]>> = Vec::new();
+        result.push(xmas.clone());
+
+        self.count("in".to_string(), xmas.clone())
+    }
+
+    fn count(&self, key: String, xmas: HashMap<String, [i64; 2]>) -> i64 {
+        if key == "R" { return 0; }
+        if key == "A" {
+            let mut product: i64 = 1;
+
+            for [start, end] in xmas.values() {
+                product *= end - start + 1;
+            }
+
+            return product;
+        }
+
+        let mut sum = 0;
+        let leaves = self.get_info(key);
+        let mut xmas = xmas.clone();
+        for leaf in leaves {
+            let mut opposite_context: [i64;2]  = [0,0];
+            if leaf.sign == "<" {
+                let [start, end] = xmas.get(&leaf.context).unwrap();
+                let endd = end.clone();
+
+                if end >= &leaf.value && start < &leaf.value {
+                    *xmas.get_mut(&leaf.context).unwrap() = [*start, leaf.value - 1];
+                    opposite_context[0] = leaf.value;
+                    opposite_context[1] = endd;
+                }
+            } else if leaf.sign == ">" {
+                let [start, end] = xmas.get(&leaf.context).unwrap();
+                let startt = start.clone();
+
+                if end > &leaf.value && start <= &leaf.value {
+                    let val = leaf.value.clone();
+                    *xmas.get_mut(&leaf.context).unwrap() = [val + 1, *end];
+                    opposite_context[0] = startt;
+                    opposite_context[1] = val;
+                }
+            }
+
+            // println!("{:?}", leaf);
+            // println!("{:?}", xmas);
+            sum += self.count(leaf.key, xmas.clone());
+            if leaf.context  != "" {
+                *xmas.get_mut(&leaf.context).unwrap() = opposite_context;
+            }
+        }
+
+        sum
+    }
+
+    fn get_info(&self, key: String) -> Vec<Leaf> {
+        let input = self.tree.get(&key).unwrap();
+
+        let exprs = input
+            .split(",");
+
+        let mut exprss: Vec<Leaf> = Vec::new();
+
+        for expr in exprs {
+            if expr.contains(":") {
+                let mut chars = expr.chars();
+                let context = chars.next().unwrap().to_string();
+                let sign = chars.next().unwrap().to_string();
+
+                let mut num = vec![];
+                while let Some(char) = chars.next() {
+                    if char == ':' { break }
+                    num.push(char);
+                }
+
+                let num: String = num.into_iter().collect();
+                let num: i64 = num.parse::<i64>().unwrap();
+                let key: String = chars.into_iter().collect();
+
+                exprss.push(Leaf {
+                    context,
+                    sign,
+                    value: num,
+                    key,
+                })
+            } else {
+                exprss.push(Leaf {
+                    context: "".to_string(),
+                    sign: "".to_string(),
+                    value: 0,
+                    key: expr.to_string(),
+                })
+            }
+        }
+
+        exprss
+    }
 }
 
 fn main() {
     let aplenty = Aplenty::build("input.txt").unwrap();
     let sum = aplenty.sum();
     println!("{:?}", sum);
+    let combinations = aplenty.combinations();
+    println!("{:?}", combinations);
 }
 
 #[cfg(test)]
@@ -149,5 +264,12 @@ mod tests {
         let aplenty = Aplenty::build("test.txt").unwrap();
         let sum = aplenty.sum();
         assert_eq!(sum, 19114);
+    }
+
+    #[test]
+    fn part2_sum() {
+        let aplenty = Aplenty::build("test.txt").unwrap();
+        let sum = aplenty.sum_2();
+        assert_eq!(sum, 167409079868000);
     }
 }
