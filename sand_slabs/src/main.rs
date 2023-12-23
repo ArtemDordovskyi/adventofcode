@@ -1,7 +1,8 @@
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 struct Brick {
     start: (usize, usize, usize),
     end: (usize, usize, usize),
@@ -59,6 +60,35 @@ impl Brick {
         }
 
         true
+    }
+
+    fn support_count(&self, bricks: &[Brick]) -> usize {
+        let mut disintegrated = HashSet::new();
+        let mut support = Vec::new();
+        support.push(self.clone());
+
+        let mut bricks = bricks.to_vec();
+
+        while support.len() > 0 {
+            let brick = support.remove(0);
+            if disintegrated.contains(&brick) {
+                continue;
+            }
+
+            disintegrated.insert(brick.clone());
+            bricks.retain(|b| *b != brick);
+
+            let new_disintegrated = brick
+                .support(&bricks)
+                .iter()
+                .filter(|b| b.supported(&bricks).is_empty())
+                .cloned()
+                .collect::<Vec<_>>();
+
+            support.extend(new_disintegrated);
+        }
+
+        disintegrated.len() - 1
     }
 
 }
@@ -133,17 +163,38 @@ impl Cube {
             .filter(|b| b.is_removable(&self.bricks))
             .collect::<Vec<Brick>>()
     }
+
+    fn disintegrated(&self) -> usize {
+        let irremovable = self
+            .bricks
+            .clone()
+            .into_iter()
+            .filter(|b| !b.is_removable(&self.bricks))
+            .collect::<Vec<Brick>>();
+
+        let mut sum: usize = 0;
+        for brick in irremovable {
+            let dis = brick.support_count(&self.bricks);
+            sum += dis
+        }
+
+        sum
+    }
 }
 
 fn main() {
     let now = std::time::Instant::now();
 
     let mut cube = Cube::new("input.txt").unwrap();
+    let cube = cube.dropped();
 
     let len = cube
-        .dropped()
         .removable()
         .len();
+    println!("len: {} ({:?})", len, now.elapsed());
+
+    let len = cube
+        .disintegrated();
     println!("len: {} ({:?})", len, now.elapsed());
 }
 
@@ -160,5 +211,14 @@ mod tests {
             .removable()
             .len();
         assert_eq!(count, 5);
+    }
+
+    #[test]
+    fn disintegrated() {
+        let mut cube = Cube::new("test.txt").unwrap();
+        let count = cube
+            .dropped()
+            .disintegrated();
+        assert_eq!(count, 7);
     }
 }
