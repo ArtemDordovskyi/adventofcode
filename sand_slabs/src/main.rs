@@ -107,28 +107,43 @@ impl Cube {
             bricks,
         })
     }
+
+    fn dropped(&mut self) -> Cube {
+        let mut dropped: Vec<Brick> = Vec::new();
+
+        for block in self.bricks.iter_mut() {
+            let max_z = block.max_z(&dropped);
+
+            let diff = block.end.2 - block.start.2;
+            block.start.2 = max_z + 1;
+            block.end.2 = block.start.2 + diff;
+            dropped.push(block.clone());
+        }
+
+        Cube {
+            bricks: dropped,
+        }
+    }
+
+    fn removable(&self) -> Vec<Brick> {
+        self
+            .bricks
+            .clone()
+            .into_iter()
+            .filter(|b| b.is_removable(&self.bricks))
+            .collect::<Vec<Brick>>()
+    }
 }
 
 fn main() {
     let now = std::time::Instant::now();
 
     let mut cube = Cube::new("input.txt").unwrap();
-    let mut dropped: Vec<Brick> = Vec::new();
 
-    for block in cube.bricks.iter_mut() {
-        let max_z = block.max_z(&dropped);
-
-        let diff = block.end.2 - block.start.2;
-        block.start.2 = max_z + 1;
-        block.end.2 = block.start.2 + diff;
-        dropped.push(block.clone());
-    }
-
-    let len = dropped
-        .iter()
-        .filter(|b| b.is_removable(&dropped))
-        .count();
-
+    let len = cube
+        .dropped()
+        .removable()
+        .len();
     println!("len: {} ({:?})", len, now.elapsed());
 }
 
@@ -137,9 +152,13 @@ mod tests {
     use crate::Cube;
 
     #[test]
-    fn part1_count() {
-        let cube = Cube::new("test.txt").unwrap();
-        let count = cube.len();
+    fn removable() {
+        let mut cube = Cube::new("test.txt").unwrap();
+
+        let count = cube
+            .dropped()
+            .removable()
+            .len();
         assert_eq!(count, 5);
     }
 }
