@@ -1,3 +1,6 @@
+use ndarray::prelude::*;
+use ndarray_linalg::Solve;
+
 #[derive(Debug, PartialEq)]
 struct Point {
     x: f64,
@@ -136,7 +139,7 @@ impl Hailstone {
 fn main() {
     let now = std::time::Instant::now();
     let input = std::fs::read_to_string("input.txt").unwrap();
-    let hailstones: Vec<Hailstone> = input.lines().map(|line| line.into()).collect();
+    let mut hailstones: Vec<Hailstone> = input.lines().map(|line| line.into()).collect();
 
     let tl = Point2d { x: 200000000000000.0, y: 200000000000000.0 };
     let br = Point2d { x: 400000000000000.0, y: 400000000000000.0 };
@@ -150,6 +153,46 @@ fn main() {
         .count();
 
     println!("Intersection: {} ({:?})", count, now.elapsed());
+    let mut i: f64 = 0.0;
+    let mut sum: f64 = 0.0;
+    while hailstones.len() > 2 {
+        let stone = hailstones.remove(0);
+        let v0 = stone.v;
+        let p0 = stone.point;
+
+        let stone = hailstones.remove(0);
+        let v1 = stone.v;
+        let p1 = stone.point;
+
+        let stone = hailstones.remove(0);
+        let v2 = stone.v;
+        let p2 = stone.point;
+
+        let a: Array2<f64> = array![
+        [v1.y - v0.y, v0.x - v1.x, 0.0, p0.y - p1.y, p1.x - p0.x, 0.0],
+        [v2.y - v0.y, v0.x - v2.x, 0.0, p0.y - p2.y, p2.x - p0.x, 0.0],
+        [v1.z - v0.z, 0.0, v0.x - v1.x, p0.z - p1.z, 0.0, p1.x - p0.x],
+        [v2.z - v0.z, 0.0, v0.x - v2.x, p0.z - p2.z, 0.0, p2.x - p0.x],
+        [0.0, v1.z - v0.z, v0.y - v1.y, 0.0, p0.z - p1.z, p1.y - p0.y],
+        [0.0, v2.z - v0.z, v0.y - v2.y, 0.0, p0.z - p2.z, p2.y - p0.y],
+    ];
+
+        let b: Array1<f64> = array![
+        (p0.y * v0.x - p1.y * v1.x) - (p0.x * v0.y - p1.x * v1.y),
+        (p0.y * v0.x - p2.y * v2.x) - (p0.x * v0.y - p2.x * v2.y),
+        (p0.z * v0.x - p1.z * v1.x) - (p0.x * v0.z - p1.x * v1.z),
+        (p0.z * v0.x - p2.z * v2.x) - (p0.x * v0.z - p2.x * v2.z),
+        (p0.z * v0.y - p1.z * v1.y) - (p0.y * v0.z - p1.y * v1.z),
+        (p0.z * v0.y - p2.z * v2.y) - (p0.y * v0.z - p2.y * v2.z),
+    ];
+
+        let rock = a.solve_into(b).unwrap();
+        sum += rock[0] + rock[1] + rock[2];
+        i += 1.0;
+        println!("Rock: {} ({:?})", rock[0] + rock[1] + rock[2], now.elapsed());
+    }
+
+    println!("Rock: {} ({:?})", sum/i, now.elapsed());
 }
 
 
