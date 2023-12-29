@@ -2,7 +2,6 @@
 struct Point {
     char: char,
     coords: (i32, i32),
-    distance: usize,
 }
 
 impl Point {
@@ -88,15 +87,13 @@ impl Point {
 
     fn start(&self, points: Vec<Point>) -> usize {
         let mut ways = self.ways(points.clone());
-        println!("{:?}", self);
-        println!("{:?}", ways);
 
         let mut result = 1;
         let mut previous_points = vec![self.clone(), self.clone()];
         while !ways.iter().all(|e| e.coords == ways[0].coords) {
             result += 1;
             let mut new_ways = Vec::new();
-            for mut way in ways {
+            for way in ways {
                 let prev = previous_points.remove(0);
                 let coords = way.next_point(prev).unwrap();
                 let point = points.iter().find(|p| p.coords == coords).unwrap();
@@ -120,7 +117,6 @@ fn main() {
             lines.push(Point {
                 char,
                 coords: (j as i32, i as i32),
-                distance: 0
             })
         }
     }
@@ -128,7 +124,7 @@ fn main() {
     let start_point = lines.iter().find(|p| p.char == 'S');
     match start_point {
         Some(s_point) => {
-            let mut point = s_point.clone();
+            let point = s_point.clone();
             let result = point.start(lines);
             println!("Result {:?} ({:?})", result, time.elapsed())
         }
@@ -151,7 +147,6 @@ mod tests {
                 lines.push(Point {
                     char,
                     coords: (j as i32, i as i32),
-                    distance: 0
                 })
             }
         }
@@ -159,7 +154,7 @@ mod tests {
         let start_point = lines.iter().find(|p| p.char == 'S');
         match start_point {
             Some(s_point) => {
-                let mut point = s_point.clone();
+                let point = s_point.clone();
                 let result = point.start(lines);
                 assert_eq!(result, 8)
             }
