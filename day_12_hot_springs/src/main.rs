@@ -42,7 +42,7 @@ impl From<&str> for Record {
         let mut line5: Vec<&str> = Vec::new();
         for _ in 0..5 {
             for m in &mask {
-                mask5.push(m.clone());
+                mask5.push(*m);
             }
             line5.push(line);
         }
@@ -78,20 +78,15 @@ impl std::fmt::Display for Record {
 }
 
 impl Record {
-    fn arrangements(&self) -> usize {
+    fn arrangements(&self, x5: bool) -> usize {
         let mut dp: HashMap<(usize, usize, usize), usize> = HashMap::new();
 
-        self.solutions(0, 0, 0, &mut dp)
-    }
-
-    fn arrangements5(&self) -> usize {
-        let mut dp: HashMap<(usize, usize, usize), usize> = HashMap::new();
-
-        self.solutions5(0, 0, 0, &mut dp)
+        self.solutions(x5, 0, 0, 0, &mut dp)
     }
 
     fn solutions(
         &self,
+        x5: bool,
         i: usize,
         bi: usize,
         current: usize,
@@ -102,52 +97,16 @@ impl Record {
             return val;
         }
 
-        if i == self.line.len() {
-            return if bi == self.mask.len() && current == 0 {
-                1
-            } else if bi == self.mask.len() - 1 && self.mask[bi] == current {
-                1
-            } else {
-                0
-            };
-        }
+        let (&ref line, &ref mask) = if x5 {
+            (&self.line5, &self.mask5)
+        } else {
+            (&self.line, &self.mask)
+        };
 
-        let mut result = 0;
-        for spring in &[Spring::Point, Spring::Damaged] {
-            if self.line[i] == *spring || self.line[i] == Spring::Unknown {
-                if *spring == Spring::Point && current == 0 {
-                    result += self.solutions(i + 1, bi, 0, dp);
-                } else if *spring == Spring::Point
-                    && current > 0
-                    && bi < self.mask.len()
-                    && self.mask[bi] == current
-                {
-                    result += self.solutions(i + 1, bi + 1, 0, dp);
-                } else if *spring == Spring::Damaged {
-                    result += self.solutions(i + 1, bi, current + 1, dp);
-                }
-            }
-        }
-        dp.insert(key, result);
-        result
-    }
-
-    fn solutions5(
-        &self,
-        i: usize,
-        bi: usize,
-        current: usize,
-        dp: &mut HashMap<(usize, usize, usize), usize>,
-    ) -> usize {
-        let key = (i, bi, current);
-        if let Some(&val) = dp.get(&key) {
-            return val;
-        }
-
-        if i == self.line5.len() {
-            return if bi == self.mask5.len() && current == 0 {
-                1
-            } else if bi == self.mask5.len() - 1 && self.mask5[bi] == current {
+        if i == line.len() {
+            return if (bi == mask.len() && current == 0)
+                || (bi == mask.len() - 1 && mask[bi] == current)
+            {
                 1
             } else {
                 0
@@ -156,17 +115,17 @@ impl Record {
 
         let mut result = 0;
         for spring in &[Spring::Point, Spring::Damaged] {
-            if self.line5[i] == *spring || self.line5[i] == Spring::Unknown {
+            if line[i] == *spring || line[i] == Spring::Unknown {
                 if *spring == Spring::Point && current == 0 {
-                    result += self.solutions5(i + 1, bi, 0, dp);
+                    result += self.solutions(x5, i + 1, bi, 0, dp);
                 } else if *spring == Spring::Point
                     && current > 0
-                    && bi < self.mask5.len()
-                    && self.mask5[bi] == current
+                    && bi < mask.len()
+                    && mask[bi] == current
                 {
-                    result += self.solutions5(i + 1, bi + 1, 0, dp);
+                    result += self.solutions(x5, i + 1, bi + 1, 0, dp);
                 } else if *spring == Spring::Damaged {
-                    result += self.solutions5(i + 1, bi, current + 1, dp);
+                    result += self.solutions(x5, i + 1, bi, current + 1, dp);
                 }
             }
         }
@@ -181,7 +140,7 @@ fn main() {
     let springs: Vec<Record> = input.lines().map(|line| line.into()).collect();
     let results: Vec<usize> = springs
         .par_iter()
-        .map(|spring| spring.arrangements())
+        .map(|spring| spring.arrangements(false))
         .collect();
 
     let result: usize = results.into_iter().sum();
@@ -189,7 +148,7 @@ fn main() {
 
     let results: Vec<usize> = springs
         .par_iter()
-        .map(|spring| spring.arrangements5())
+        .map(|spring| spring.arrangements(true))
         .collect();
 
     let result: usize = results.into_iter().sum();
@@ -204,7 +163,10 @@ mod tests {
     fn part_1() {
         let input = std::fs::read_to_string("test.txt").unwrap();
         let springs: Vec<Record> = input.lines().map(|line| line.into()).collect();
-        let springs: Vec<usize> = springs.iter().map(|spring| spring.arrangements()).collect();
+        let springs: Vec<usize> = springs
+            .iter()
+            .map(|spring| spring.arrangements(false))
+            .collect();
 
         let result: usize = springs.into_iter().sum();
         assert_eq!(result, 21);
@@ -216,7 +178,7 @@ mod tests {
         let springs: Vec<Record> = input.lines().map(|line| line.into()).collect();
         let springs: Vec<usize> = springs
             .iter()
-            .map(|spring| spring.arrangements5())
+            .map(|spring| spring.arrangements(true))
             .collect();
 
         let result: usize = springs.into_iter().sum();
