@@ -1,3 +1,5 @@
+use rayon::prelude::*;
+use std::collections::HashMap;
 use std::fmt::Formatter;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -19,9 +21,10 @@ impl From<char> for Spring {
 
 #[derive(Debug)]
 struct Record {
-    value: String,
     line: Vec<Spring>,
     mask: Vec<usize>,
+    line5: Vec<Spring>,
+    mask5: Vec<usize>,
 }
 
 impl From<&str> for Record {
@@ -35,12 +38,25 @@ impl From<&str> for Record {
             .map(|num| num.parse::<usize>().unwrap())
             .collect();
 
-        let line: Vec<Spring> = line.chars().map(|c| Spring::from(c)).collect();
+        let mut mask5: Vec<usize> = Vec::new();
+        let mut line5: Vec<&str> = Vec::new();
+        for _ in 0..5 {
+            for m in &mask {
+                mask5.push(m.clone());
+            }
+            line5.push(line);
+        }
+
+        let line: Vec<Spring> = line.chars().map(|c| c.into()).collect();
+
+        let line5 = line5.join("?");
+        let line5: Vec<Spring> = line5.chars().map(|c| c.into()).collect();
 
         Self {
-            value: value.to_string(),
             line,
             mask,
+            line5,
+            mask5,
         }
     }
 }
@@ -63,112 +79,120 @@ impl std::fmt::Display for Record {
 
 impl Record {
     fn arrangements(&self) -> usize {
-        let sharps_sum: usize = self.mask.clone().into_iter().sum();
+        let mut dp: HashMap<(usize, usize, usize), usize> = HashMap::new();
 
-        let sharp_uses = self.line.iter().filter(|&c| c == &Spring::Damaged).count();
-        let sharps_left = sharps_sum - sharp_uses;
-        let question_indices: Vec<usize> = self
-            .line
-            .iter()
-            .enumerate()
-            .filter_map(|(i, c)| if c == &Spring::Unknown { Some(i) } else { None })
-            .collect();
-
-        let mut str = "".to_string();
-        for _ in &question_indices {
-            str.push_str(&"?")
-        }
-
-        let results = self.substitution(&str, sharps_left, Vec::new(), Vec::new());
-
-        let mut variants = Vec::new();
-        for result in results {
-            let mut res = self.line.clone();
-            for (i, char) in result.into_iter().enumerate() {
-                let index = question_indices[i];
-                res[index] = char;
-            }
-            variants.push(res);
-        }
-
-        let mut good: Vec<String> = Vec::new();
-        for variant in variants {
-            if self.check(variant.clone()) {
-                let str = self.to_str(variant.clone());
-                good.push(str);
-            }
-        }
-
-        good.len()
+        self.solutions(0, 0, 0, &mut dp)
     }
 
-    fn substitution(
+    fn arrangements5(&self) -> usize {
+        let mut dp: HashMap<(usize, usize, usize), usize> = HashMap::new();
+
+        self.solutions5(0, 0, 0, &mut dp)
+    }
+
+    fn solutions(
         &self,
-        a: &str,
-        b: usize,
-        mut result: Vec<Spring>,
-        mut results: Vec<Vec<Spring>>,
-    ) -> Vec<Vec<Spring>> {
-        if b == 0 {
-            for _ in result.len()..a.len() {
-                result.push(Spring::Point);
-            }
-
-            results.push(result);
-            return results;
-        } else {
-            let mut res1 = result.clone();
-            let mut res2 = result.clone();
-
-            res1.push(Spring::Damaged);
-            results = self.substitution(a, b - 1, res1, results);
-            if result.len() < a.len() - b {
-                res2.push(Spring::Point);
-                results = self.substitution(a, b, res2, results);
-            }
-
-            results
+        i: usize,
+        bi: usize,
+        current: usize,
+        dp: &mut HashMap<(usize, usize, usize), usize>,
+    ) -> usize {
+        let key = (i, bi, current);
+        if let Some(&val) = dp.get(&key) {
+            return val;
         }
-    }
 
-    fn check(&self, res: Vec<Spring>) -> bool {
-        let str = self.to_str(res);
-
-        let msk: Vec<usize> = str
-            .split('.')
-            .filter_map(|str| {
-                if str.contains(&"#") {
-                    Some(str.chars().count())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        msk == self.mask
-    }
-
-    fn to_str(&self, v: Vec<Spring>) -> String {
-        let mut chars: Vec<char> = Vec::new();
-        for value in &v {
-            match value {
-                Spring::Point => chars.push('.'),
-                Spring::Damaged => chars.push('#'),
-                _ => chars.push('?'),
+        if i == self.line.len() {
+            return if bi == self.mask.len() && current == 0 {
+                1
+            } else if bi == self.mask.len() - 1 && self.mask[bi] == current {
+                1
+            } else {
+                0
             };
         }
 
-        chars.iter().collect::<String>()
+        let mut result = 0;
+        for spring in &[Spring::Point, Spring::Damaged] {
+            if self.line[i] == *spring || self.line[i] == Spring::Unknown {
+                if *spring == Spring::Point && current == 0 {
+                    result += self.solutions(i + 1, bi, 0, dp);
+                } else if *spring == Spring::Point
+                    && current > 0
+                    && bi < self.mask.len()
+                    && self.mask[bi] == current
+                {
+                    result += self.solutions(i + 1, bi + 1, 0, dp);
+                } else if *spring == Spring::Damaged {
+                    result += self.solutions(i + 1, bi, current + 1, dp);
+                }
+            }
+        }
+        dp.insert(key, result);
+        result
+    }
+
+    fn solutions5(
+        &self,
+        i: usize,
+        bi: usize,
+        current: usize,
+        dp: &mut HashMap<(usize, usize, usize), usize>,
+    ) -> usize {
+        let key = (i, bi, current);
+        if let Some(&val) = dp.get(&key) {
+            return val;
+        }
+
+        if i == self.line5.len() {
+            return if bi == self.mask5.len() && current == 0 {
+                1
+            } else if bi == self.mask5.len() - 1 && self.mask5[bi] == current {
+                1
+            } else {
+                0
+            };
+        }
+
+        let mut result = 0;
+        for spring in &[Spring::Point, Spring::Damaged] {
+            if self.line5[i] == *spring || self.line5[i] == Spring::Unknown {
+                if *spring == Spring::Point && current == 0 {
+                    result += self.solutions5(i + 1, bi, 0, dp);
+                } else if *spring == Spring::Point
+                    && current > 0
+                    && bi < self.mask5.len()
+                    && self.mask5[bi] == current
+                {
+                    result += self.solutions5(i + 1, bi + 1, 0, dp);
+                } else if *spring == Spring::Damaged {
+                    result += self.solutions5(i + 1, bi, current + 1, dp);
+                }
+            }
+        }
+        dp.insert(key, result);
+        result
     }
 }
 
 fn main() {
     let time = std::time::Instant::now();
-    let input = std::fs::read_to_string("input.txt").unwrap();
+    let input = std::fs::read_to_string("input.txt").expect("Unable to read file");
     let springs: Vec<Record> = input.lines().map(|line| line.into()).collect();
-    let springs: Vec<usize> = springs.iter().map(|spring| spring.arrangements()).collect();
+    let results: Vec<usize> = springs
+        .par_iter()
+        .map(|spring| spring.arrangements())
+        .collect();
 
-    let result: usize = springs.into_iter().sum();
+    let result: usize = results.into_iter().sum();
+    println!("Result: {:?} ({:?})", result, time.elapsed());
+
+    let results: Vec<usize> = springs
+        .par_iter()
+        .map(|spring| spring.arrangements5())
+        .collect();
+
+    let result: usize = results.into_iter().sum();
     println!("Result: {:?} ({:?})", result, time.elapsed());
 }
 
@@ -184,5 +208,18 @@ mod tests {
 
         let result: usize = springs.into_iter().sum();
         assert_eq!(result, 21);
+    }
+
+    #[test]
+    fn part_2() {
+        let input = std::fs::read_to_string("test.txt").unwrap();
+        let springs: Vec<Record> = input.lines().map(|line| line.into()).collect();
+        let springs: Vec<usize> = springs
+            .iter()
+            .map(|spring| spring.arrangements5())
+            .collect();
+
+        let result: usize = springs.into_iter().sum();
+        assert_eq!(result, 525152);
     }
 }
