@@ -35,6 +35,7 @@ fn parse_line_to_numbers(line: &str) -> Vec<u8> {
 
 fn is_safe_report(data: &[u8]) -> bool {
     let (mut sign, mut error) = (0, 0);
+
     for i in 1..data.len() {
         let (current, previous) = (data[i], data[i - 1]);
         if !is_valid_transition(current, previous, &mut sign) {
@@ -52,17 +53,21 @@ fn is_tolerate_report(data: &[u8]) -> bool {
     }
     
     for i in 0..data.len() {
-        let filtered_data: Vec<u8> = data.iter()
-            .enumerate()
-            .filter(|&(j, _)| j != i)
-            .map(|(_, &value)| value)
-            .collect();
+        let filtered_data = remove_element(data, i);
         if is_safe_report(&filtered_data) {
             return true;
         }
     }
 
     false 
+}
+
+fn remove_element(data: &[u8], index: usize) -> Vec<u8> {
+    data.iter()
+        .enumerate()
+        .filter(|&(i, _)| i != index)
+        .map(|(_, &value)| value)
+        .collect()
 }
 
 fn is_valid_transition(current: u8, previous: u8, sign: &mut i8) -> bool {
