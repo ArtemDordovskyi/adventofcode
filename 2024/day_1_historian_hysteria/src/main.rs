@@ -6,7 +6,7 @@ fn main() {
     let now = std::time::Instant::now();
 
     let input = File::open("input.txt");
-    let mut content =  String::new();
+    let mut content = String::new();
 
     let _ = input.expect("File not found").read_to_string(&mut content);
     let lines = content.lines();
