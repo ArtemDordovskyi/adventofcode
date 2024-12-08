@@ -19,14 +19,7 @@ fn main() -> io::Result<()> {
     for ((x, y), ch) in &letters {
         if ch == &'X' {
             // Check all directions for "XMAS"
-            xmas_count += check_direction(&letters, *x, *y, 0, 1);
-            xmas_count += check_direction(&letters, *x, *y, 0, -1);
-            xmas_count += check_direction(&letters, *x, *y, 1, 0);
-            xmas_count += check_direction(&letters, *x, *y, -1, 0);
-            xmas_count += check_direction(&letters, *x, *y, 1, 1);
-            xmas_count += check_direction(&letters, *x, *y, -1, -1);
-            xmas_count += check_direction(&letters, *x, *y, -1, 1);
-            xmas_count += check_direction(&letters, *x, *y, 1, -1);
+            xmas_count += check_all_directions(&letters, *x, *y);
         }
         if ch == &'A' {
             x_mas_count += check_x_mas(&letters, *x, *y);
@@ -43,6 +36,21 @@ fn read_file_to_string(path: &str) -> io::Result<String> {
     let mut content = String::new();
     input.read_to_string(&mut content)?;
     Ok(content)
+}
+
+fn check_all_directions(letters: &HashMap<(u32, u32), char>, x: u32, y: u32) -> u32 {
+    let directions = [
+        (0, 1), // Right
+        (0, -1), // Left
+        (1, 0), // Down
+        (-1, 0), // Up
+        (1, 1), // Down-Right
+        (-1, -1), // Up-Left
+        (-1, 1), // Down-Left
+        (1, -1) // Up-Right
+    ];
+    
+    directions.iter().map(|&(dx, dy)| check_direction(letters, x, y, dx, dy)).sum()
 }
 
 fn check_direction(letters: &HashMap<(u32, u32), char>, x: u32, y: u32, dx: i32, dy: i32) -> u32 {
